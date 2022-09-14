@@ -1,9 +1,5 @@
-import sql from 'mssql';
 import { DBbuilder } from './DBbuilder';
-import { FCSCandle } from './FCS/Candle';
 import { FCS_H } from './FCS/FCS';
-import { AssetType } from './FCS/types';
-import formatToSQLDate from './functions/formatToSQLDate';
 
 async function main() {
     let FCS = new FCS_H();
@@ -17,6 +13,11 @@ async function main() {
     }
 
     await DB.L03__pushAllSymbolsToDB(FCS);
+    //await DB.L02__DANGEROUSLY__RESET__SYMBOLS();
+
+    if (DB.errors.length > 0) {
+        console.warn(`Errors in DB ${DB.errors.join('\n')}`);
+    }
 
     DB.connection.close();
 }
