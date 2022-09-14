@@ -26,65 +26,73 @@ type PriceDataDBRecord = {
 async function main() {
     let FCS = new FCS_H();
     let dbBuilder = new DBbuilder();
-    let connection: false | sql.ConnectionPool =
-        await dbBuilder.createDBConnection();
-    if (!connection) {
+    await dbBuilder.createDBConnection();
+    if (!dbBuilder.connection) {
+        console.warn(`Unable to connect to DB`);
         return false;
     }
-    // let sqlFilePath = `C:/Users/User/Documents/programming/NewsFactory/FCSAPI/sql/INIT__symbols.sql`;
-    // let sqlStatement = dbBuilder.loadStatementFromFile(sqlFilePath);
-    // await dbBuilder.executeStatement(connection, sqlStatement);
-    let result: false | sql.IResult<AssetDBRecord> =
+
+    let AssetDBRecordResult: false | sql.IResult<AssetDBRecord> =
         await dbBuilder.executeStatement(
-            connection,
+            dbBuilder.connection,
             `   SELECT * FROM symbols`
-        ); //as any[][];
-    if (!result) {
+        );
+    if (!AssetDBRecordResult) {
         return false;
     }
-    for (let i in result.recordset) {
-        let assetDBRecord: AssetDBRecord = result.recordset[i];
-        let assetData: false | FCSCandle = await FCS.getSingleCandleData(
-            assetDBRecord.assetType,
-            assetDBRecord.symbol
-        );
-        if (assetData) {
-            console.log(assetData);
-            let priceRecord: PriceDataDBRecord = {
-                symbol: assetDBRecord.symbol,
-                h: assetData.h,
-                l: assetData.l,
-                o: assetData.o,
-                c: assetData.c,
-                v: assetData.v,
-                tm: formatToSQLDate(assetData.tm),
-            };
+    for (let i in AssetDBRecordResult.recordset) {
+        let assetDBRecord: AssetDBRecord = AssetDBRecordResult.recordset[i];
+        let storeInDB = await storeCandleInDB(assetDBRecord, FCS, dbBuilder);
+    }
+    dbBuilder.connection.close();
+}
 
-            console.log(priceRecord);
+main();
 
-            // Insert into DB
-            let stringified: string = Object.values(priceRecord).join(`', '`);
+async function storeCandleInDB(
+    assetDBRecord: AssetDBRecord,
+    FCS: FCS_H,
+    dbBuilder: DBbuilder
+) {
+    let assetData: false | FCSCandle = await FCS.getSingleCandleData(
+        assetDBRecord.assetType,
+        assetDBRecord.symbol
+    );
+    if (assetData) {
+        console.log(assetData);
+        let priceRecord: PriceDataDBRecord = {
+            symbol: assetDBRecord.symbol,
+            h: assetData.h,
+            l: assetData.l,
+            o: assetData.o,
+            c: assetData.c,
+            v: assetData.v,
+            tm: formatToSQLDate(assetData.tm),
+        };
 
-            let sqlStateMent = `
+        console.log(priceRecord);
+
+        // Insert into DB
+        let stringified: string = Object.values(priceRecord).join(`', '`);
+
+        let sqlStateMent = `
                 INSERT INTO assetData
                 VALUES
                 ('${stringified}');
             `;
 
-            //console.log(sqlStateMent);
+        //console.log(sqlStateMent);
 
-            let INSERTresult: false | sql.IResult<PriceDataDBRecord> =
-                await dbBuilder.executeStatement(connection, sqlStateMent); //as any[][];
-            if (!INSERTresult) {
-                return false;
-            }
-            let priceRecordData: PriceDataDBRecord = INSERTresult.recordset[i];
-            console.log(`PriceRecordData: ${priceRecordData}`);
+        let INSERTresult: false | sql.IResult<unknown> =
+            await dbBuilder.executeStatement(
+                dbBuilder.connection,
+                sqlStateMent
+            );
+        if (!INSERTresult) {
+            console.warn(`Failed to insert`);
+            return false;
         }
-
-        return;
+        let rowsAffected = INSERTresult.rowsAffected[0];
+        return rowsAffected === 1;
     }
-    connection.close();
 }
-
-main();

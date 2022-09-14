@@ -21,8 +21,10 @@ class DBbuilder {
     } as sql.config;
 
     errors: string[];
+    connection: sql.ConnectionPool;
 
     constructor() {
+        this.connection = {} as sql.ConnectionPool;
         this.errors = [];
     }
     /**
@@ -30,13 +32,14 @@ class DBbuilder {
      * Returns a connection which you can then use to communicate
      * @returns Promise
      */
-    async createDBConnection(): Promise<false | sql.ConnectionPool> {
+    async createDBConnection() {
         return new Promise(async (resolve, reject) => {
             try {
                 let connection: sql.ConnectionPool = await sql.connect(
                     DBbuilder.config
                 );
-                resolve(connection);
+                this.connection = connection;
+                resolve(true);
             } catch (e) {
                 console.warn(`DB connection error: ${e}`);
                 reject(false);
