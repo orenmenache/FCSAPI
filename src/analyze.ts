@@ -83,30 +83,6 @@ class FCS__Handler {
     }
 }
 
-async function main() {
-    let dbBuilder = new DBbuilder();
-    let connection = await dbBuilder.createDBConnection();
-    //let sqlStatement = `SELECT * FROM forex__symbols`;
-    let sqlStatement = dbBuilder.loadStatementFromFile(
-        `C:/Users/User/Documents/programming/NewsFactory/FCSAPI/sql/createForexSymbolsTable.sql`
-    );
-    let result = await dbBuilder.executeStatement(connection, sqlStatement);
-    if (!result) {
-        return false;
-    }
-    for (let objArr of result) {
-        for (let obj of objArr) {
-            for (let n in obj) {
-                console.log(`${n} ${obj[n]}`);
-            }
-        }
-    }
-
-    connection.close();
-}
-
-main();
-
 // async function VERSION__A() {
 //     //let FCSH = new FCS__Handler();
 //     //await FCSH.FOREX();
