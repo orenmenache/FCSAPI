@@ -49,7 +49,10 @@ class FCS_H {
         URL += `&from=${from}&to=${to}`;
         URL += `&access_key=${FCS_H.key}`;
 
-        let response: false | JSONResponse = await this.axiosGET(URL);
+        let response: false | JSONResponse = await this.axiosGetLIMITED(
+            URL,
+            5000
+        );
 
         if (!response) {
             console.warn(`!response`);
@@ -92,6 +95,44 @@ class FCS_H {
 
         //https://fcsapi.com/api-v3/forex/history?symbol=EUR/USD&period=1d&from=2022-9-8&to=2022-9-9&access_key=
     }
+    async axiosGetLIMITED(
+        url: string,
+        timeLimit: number
+    ): Promise<JSONResponse | false> {
+        try {
+            const timeLimitError = 'TimeLimitReached';
+
+            const limit = new Promise<string>((resolve, reject) => {
+                setTimeout(resolve, timeLimit, timeLimitError);
+            });
+
+            const axiosResult = new Promise<false | JSONResponse>(
+                async (resolve, reject) => {
+                    let result = await this.axiosGET(url);
+                    resolve(result);
+                }
+            );
+
+            const value: false | string | JSONResponse = await Promise.race([
+                limit,
+                axiosResult,
+            ]);
+
+            if (value === timeLimitError) {
+                console.warn(timeLimitError);
+                return false;
+            }
+            if (!value) {
+                console.warn(`!value`);
+                return false;
+            }
+
+            return value as JSONResponse;
+        } catch (e) {
+            console.warn(`Failure in axiosGetLIMITED: ${e}`);
+            return false;
+        }
+    }
     async axiosGET(url: string): Promise<JSONResponse | false> {
         let runThis: any = {
             method: 'get',
@@ -102,6 +143,7 @@ class FCS_H {
             if (this.isPositiveResponse(response)) {
                 return response as JSONResponse;
             }
+            console.warn(`Negative response from API: ${response}`);
         } catch (e) {
             console.warn(`Error in axiosGET: ${e}`);
         }

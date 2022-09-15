@@ -85,7 +85,7 @@ class DBbuilder {
                     `Couldn't store symbol ${assetDBRecord.assetName}`
                 );
             }
-            await this.L01__sleep(15 * 1000);
+            await this.L01__sleep(5000);
         }
         if (this.errors.length > 0) {
             console.warn(
@@ -136,8 +136,8 @@ class DBbuilder {
 
             //console.log(`%c${sqlStateMent}`, 'color: yellow');
 
-            let INSERTresult: false | sql.IResult<unknown> =
-                await this.L01__executeStatement(sqlStateMent);
+            let INSERTresult: false | sql.IResult<any> =
+                await this.L01__executeStatement<any>(sqlStateMent);
             if (!INSERTresult) {
                 console.warn(`Failed to insert`);
                 return false;
@@ -176,7 +176,7 @@ class DBbuilder {
             const resetFile = `C:/Users/User/Documents/programming/NewsFactory/FCSAPI/sql/INIT__symbols.sql`;
             const sqlStatement = this.L01__loadStatementFromFile(resetFile);
             const result: false | sql.IResult<any> =
-                await this.L01__executeStatement(sqlStatement);
+                await this.L01__executeStatement<any>(sqlStatement);
             if (!result) {
                 console.warn(`Failed to reset`);
                 return false;
@@ -207,16 +207,18 @@ class DBbuilder {
             }
         });
     }
-    async L01__executeStatement(
+    async L01__executeStatement<T extends any>(
         sqlStatement: string
-    ): Promise<false | sql.IResult<any>> {
+    ): Promise<false | sql.IResult<T>> {
         if (!this.connection) {
             return false;
         }
         return new Promise(async (resolve, reject) => {
+            console.log(`%c${sqlStatement}`, 'color: gray');
             try {
                 let req = new sql.Request(this.connection);
-                let result = await req.query(sqlStatement);
+                let result: sql.IResult<T> = await req.query(sqlStatement);
+                console.log(result);
                 resolve(result);
             } catch (e) {
                 this.errors.push(`Error executing query: ${e}`);
