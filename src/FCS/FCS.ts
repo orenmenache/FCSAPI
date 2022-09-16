@@ -95,6 +95,15 @@ class FCS_H {
 
         //https://fcsapi.com/api-v3/forex/history?symbol=EUR/USD&period=1d&from=2022-9-8&to=2022-9-9&access_key=
     }
+
+    /**
+     * Added a Promise.race to ensure a time limit
+     * on axiosGet
+     *
+     * @param  {string} url
+     * @param  {number} timeLimit
+     * @returns Promise
+     */
     async axiosGetLIMITED(
         url: string,
         timeLimit: number

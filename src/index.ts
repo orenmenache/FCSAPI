@@ -1,5 +1,7 @@
-import { DBbuilder } from './DBbuilder';
+import { Asset__DBRecord, DBbuilder, PriceData__DBRecord } from './DBbuilder';
 import { FCS_H } from './FCS/FCS';
+import sql from 'mssql';
+import { TimeDeltas } from './classes/TimeDeltas';
 
 async function main() {
     let FCS = new FCS_H();
@@ -12,14 +14,10 @@ async function main() {
         return false;
     }
 
-    await DB.L03__pushAllSymbolsToDB(FCS);
-    //await DB.L02__DANGEROUSLY__RESET__SYMBOLS();
+    let result = await DB.L03__getAssetsBySymbols([`EUR/USD`, `USD/JPY`]);
+    console.log(result);
 
-    if (DB.errors.length > 0) {
-        console.warn(`Errors in DB ${DB.errors.join('\n')}`);
-    }
-
-    DB.connection.close();
+    //DB.connection.close();
 }
 
 main();

@@ -5,6 +5,7 @@ import { AssetType } from './FCS/types';
 import { FCS_H } from './FCS/FCS';
 import { FCSCandle } from './FCS/Candle';
 import formatToSQLDate from './functions/formatToSQLDate';
+import { EditionType, TimeDeltas } from './classes/TimeDeltas';
 dotenv.config();
 
 type Asset__DBRecord = {
@@ -47,6 +48,71 @@ class DBbuilder {
     constructor() {
         this.connection = {} as sql.ConnectionPool;
         this.errors = [];
+    }
+    async L04__CONTINUOUSLY__getTodaysPrices(customDate?: Date) {
+        if (!this.connection) {
+            this.errors.push(
+                `Couldn't execute L04__CONTINUOUSLY__getTodaysPrices. No connection.`
+            );
+            return false;
+        }
+        const date = customDate || new Date();
+        const TD = new TimeDeltas(date);
+        const nowEdition = TD.nowEdition;
+
+        // We want YESTERDAY's prices
+        //@ts-ignore
+        const yesterday = new Date(Date.parse(date) - 24 * 60 * 60 * 1000);
+    }
+    /**
+     * Checks which prices we have for given date
+     * checks the result list against the symbols for that edition
+     * return the unprocessed symbols for the given date
+     */
+    async L03__symbolsNotProcessed(date: Date, nowEdition: EditionType) {
+        if (!this.connection) {
+            this.errors.push(
+                `Couldn't execute L03__symbolsNotProcessed. No connection.`
+            );
+            return false;
+        }
+
+        // Prices for date:
+        let pricesForDate__RESULT:
+            | false
+            | { recordset: PriceData__DBRecord[] } =
+            await this.L02__getAllPricesForDate(date);
+        if (!pricesForDate__RESULT) {
+            this.errors.push(`Couldn't getPrices for date ${date}`);
+            return false;
+        }
+        let pricesForDate: PriceData__DBRecord[] =
+            pricesForDate__RESULT.recordset;
+
+        // Symbols for edition (noon / evening)
+        let symbolsForEdition__RESULT:
+            | false
+            | { recordset: Asset__DBRecord[] } =
+            await this.L02__getSymbolListForEdition(nowEdition);
+
+        if (!symbolsForEdition__RESULT) {
+            this.errors.push(`Couldn't symbolsForEdition`);
+            return false;
+        }
+        let symbolsForEdition: Asset__DBRecord[] =
+            symbolsForEdition__RESULT.recordset;
+
+        // Now check which symbols in symbolsForEdition DON'T exist in pricesForDate
+        let todaySymbols = pricesForDate.map((price) => price.symbol);
+        let symbolsThatNeedDoing: string[] = [];
+
+        for (let sym of symbolsForEdition) {
+            if (!todaySymbols.includes(sym.symbol)) {
+                symbolsThatNeedDoing.push(sym.symbol);
+            }
+        }
+
+        return symbolsThatNeedDoing;
     }
     /**
      * Gets the symbol list from DB
@@ -189,6 +255,95 @@ class DBbuilder {
         }
     }
     /**
+     * Get ALL prices
+     * @param  {Date} date
+     * @returns PriceData__DBRecord
+     */
+    async L02__getAllPricesForDate(
+        date: Date
+    ): Promise<false | { recordset: PriceData__DBRecord[] }> {
+        if (!this.connection) {
+            return false;
+        }
+        let sqlDate = formatToSQLDate(date);
+        let sqlStatement = `
+            SELECT * FROM assetData
+            WHERE tm = '${sqlDate}'
+        `;
+        let result: false | { recordset: PriceData__DBRecord[] } =
+            await this.L01__executeStatement(sqlStatement);
+
+        return result;
+    }
+    async L02__getPriceForDate__SINGLE(
+        date: Date,
+        symbol: string
+    ): Promise<false | { recordset: PriceData__DBRecord[] }> {
+        if (!this.connection) {
+            return false;
+        }
+        let sqlDate = formatToSQLDate(date);
+        let sqlStatement = `
+            SELECT * FROM assetData
+            WHERE tm = '${sqlDate}'
+            AND symbol = '${symbol}';
+        `;
+        let result: false | { recordset: PriceData__DBRecord[] } =
+            await this.L01__executeStatement(sqlStatement);
+
+        return result;
+    }
+    async L02__getSymbolListForEdition(
+        nowEdition: EditionType
+    ): Promise<false | { recordset: Asset__DBRecord[] }> {
+        if (!this.connection) {
+            return false;
+        }
+        let sqlStatement = `
+            SELECT * FROM symbols
+            WHERE (editionNameA = '${nowEdition}') OR 
+            (editionNameB = '${nowEdition}');
+        `;
+        let result: false | { recordset: Asset__DBRecord[] } =
+            await this.L01__executeStatement(sqlStatement);
+
+        return result;
+    }
+    async L03__getAssetsBySymbols(
+        symbols: string[]
+    ): Promise<false | { recordset: Asset__DBRecord[] }> {
+        if (!this.connection) {
+            return false;
+        }
+
+        const symbolsStr: string = symbols.join(`')\nOR (symbol = '`);
+
+        let sqlStatement = `
+            SELECT * FROM symbols
+            WHERE (symbol = '${symbolsStr}');`; // ONE '
+
+        let result: false | { recordset: Asset__DBRecord[] } =
+            await this.L01__executeStatement(sqlStatement);
+
+        return result;
+    }
+    async L02__getAssetBySymbol(symbol: string) {
+        if (!this.connection) {
+            return false;
+        }
+        let sqlStatement = `
+            SELECT * FROM symbols
+            WHERE symbol = '${symbol}';
+        `;
+        let result: false | { recordset: Asset__DBRecord[] } =
+            await this.L01__executeStatement(sqlStatement);
+
+        return result;
+    }
+    /*
+        Every method with L02 and above relies on an existing connection
+    */
+    /**
      * Connect to DB using the config in the static section
      * Returns a connection which you can then use to communicate
      * @returns Promise
@@ -236,4 +391,4 @@ class DBbuilder {
     }
 }
 
-export { DBbuilder };
+export { DBbuilder, PriceData__DBRecord, Asset__DBRecord };
