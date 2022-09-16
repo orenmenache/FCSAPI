@@ -6,7 +6,7 @@ import { VolumeAnanyzer } from './Analyzers/VolumeAnalyzer';
 import { AssetSinglePackage } from './Asset';
 import { FCSCandle } from './Candle';
 import { JSONCandle } from './JsonCandle';
-import { FCSRoute, JSONResponse } from './Response';
+import { JSONResponse } from './Response';
 import {
     AssetType,
     CandleKeys,

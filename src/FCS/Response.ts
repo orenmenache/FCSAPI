@@ -1,7 +1,6 @@
 import { FCSCandle } from './Candle';
 import { JSONCandle } from './JsonCandle';
 
-type FCSRoute = 'forex' | 'stock';
 type FCSDateString = string;
 type FCSResponseKeys = 'status' | 'headers' | 'data';
 type FCSResponseOBJ = { [key in FCSResponseKeys]: any };
@@ -33,4 +32,4 @@ interface FCSResponse extends FCSResponseOBJ {
     };
 }
 
-export { JSONResponse, FCSResponse, FCSRoute, FCSDateString, FCSResponseOBJ };
+export { JSONResponse, FCSResponse, FCSDateString, FCSResponseOBJ };
