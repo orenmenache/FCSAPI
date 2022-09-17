@@ -49,7 +49,7 @@ class DBbuilder {
         this.connection = {} as sql.ConnectionPool;
         this.errors = [];
     }
-    async L04__CONTINUOUSLY__getTodaysPrices(customDate?: Date) {
+    async L04__CONTINUOUSLY__getTodaysPrices(FCS: FCS_H, customDate?: Date) {
         if (!this.connection) {
             this.errors.push(
                 `Couldn't execute L04__CONTINUOUSLY__getTodaysPrices. No connection.`
@@ -63,13 +63,55 @@ class DBbuilder {
         // We want YESTERDAY's prices
         //@ts-ignore
         const yesterday = new Date(Date.parse(date) - 24 * 60 * 60 * 1000);
+        console.log(`YESTERDAY: ${yesterday}`);
+
+        await this.L03__pushAllPricesToDB(FCS);
+        const remainingSymbols__RESULT = await this.L03__symbolsNotProcessed(
+            yesterday,
+            nowEdition
+        );
+        if (!remainingSymbols__RESULT) {
+            this.errors.push(
+                `Error in L04__CONTINUOUSLY__getTodaysPrices: remainingSymbols__RESULT === false`
+            );
+            return false;
+        }
+        const remainingSymbols: string[] = remainingSymbols__RESULT;
+        console.log(
+            `%cRemaining symbols: ${remainingSymbols.join()}`,
+            'color: orange'
+        );
+        const symbolList__RESULT = await this.L02__getAssetsBySymbols(
+            remainingSymbols
+        );
+
+        if (!symbolList__RESULT) {
+            this.errors.push(
+                `Error in L04__CONTINUOUSLY__getTodaysPrices: symbolList__RESULT === false`
+            );
+            return false;
+        }
+
+        const symbolList: Asset__DBRecord[] = symbolList__RESULT.recordset;
+
+        for (let sym of symbolList) {
+            let assetDBRecord: Asset__DBRecord = sym;
+            let pushSingleCandle__RESULT =
+                await this.L02__store_SINGLE_CandleInDB(assetDBRecord, FCS);
+            console.log(
+                `NEW PUSH RESULT for symbol: ${sym.symbol}: ${pushSingleCandle__RESULT}`
+            );
+        }
     }
     /**
      * Checks which prices we have for given date
      * checks the result list against the symbols for that edition
      * return the unprocessed symbols for the given date
      */
-    async L03__symbolsNotProcessed(date: Date, nowEdition: EditionType) {
+    async L03__symbolsNotProcessed(
+        date: Date,
+        nowEdition: EditionType
+    ): Promise<false | string[]> {
         if (!this.connection) {
             this.errors.push(
                 `Couldn't execute L03__symbolsNotProcessed. No connection.`
@@ -123,7 +165,7 @@ class DBbuilder {
      *
      * @param  {FCS_H} FCS
      */
-    async L03__pushAllSymbolsToDB(FCS: FCS_H) {
+    async L03__pushAllPricesToDB(FCS: FCS_H) {
         if (!this.connection) {
             return false;
         }
@@ -309,7 +351,7 @@ class DBbuilder {
 
         return result;
     }
-    async L03__getAssetsBySymbols(
+    async L02__getAssetsBySymbols(
         symbols: string[]
     ): Promise<false | { recordset: Asset__DBRecord[] }> {
         if (!this.connection) {

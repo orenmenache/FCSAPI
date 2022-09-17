@@ -14,7 +14,15 @@ async function main() {
         return false;
     }
 
-    let result = await DB.L03__getAssetsBySymbols([`EUR/USD`, `USD/JPY`]);
+    // const customDate = false;
+    // const date = customDate || new Date();
+    // const TD = new TimeDeltas(date);
+    // const nowEdition = TD.nowEdition;
+    // const yesterday = new Date(Date.parse(date) - 24 * 60 * 60 * 1000);
+    // console.log(`YESTERDAY: ${yesterday}`);
+
+    let result = await DB.L04__CONTINUOUSLY__getTodaysPrices(FCS);
+    //let result = await DB.L03__symbolsNotProcessed(yesterday, 'noon');
     console.log(result);
 
     //DB.connection.close();
