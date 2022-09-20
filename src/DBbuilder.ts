@@ -3,9 +3,10 @@ import sql from 'mssql';
 import dotenv from 'dotenv';
 import { AssetType } from './FCS/types';
 import { FCS_H } from './FCS/FCS';
-import { FCSCandle } from './FCS/Candle';
+import { FCSCandle } from './FCS/classes/Candle';
 import formatToSQLDate from './functions/formatToSQLDate';
 import { EditionType, TimeDeltas } from './classes/TimeDeltas';
+import { AssetSinglePackage } from './FCS/classes/AssetSinglePackage';
 dotenv.config();
 
 type Asset__DBRecord = {
@@ -65,7 +66,7 @@ class DBbuilder {
         const yesterday = new Date(Date.parse(date) - 24 * 60 * 60 * 1000);
         console.log(`YESTERDAY: ${yesterday}`);
 
-        await this.L03__pushAllPricesToDB(FCS);
+        await this.L04__pushAllPricesToDB(FCS);
         const remainingSymbols__RESULT = await this.L03__symbolsNotProcessed(
             yesterday,
             nowEdition
@@ -94,14 +95,14 @@ class DBbuilder {
 
         const symbolList: Asset__DBRecord[] = symbolList__RESULT.recordset;
 
-        for (let sym of symbolList) {
-            let assetDBRecord: Asset__DBRecord = sym;
-            let pushSingleCandle__RESULT =
-                await this.L02__store_SINGLE_CandleInDB(assetDBRecord, FCS);
-            console.log(
-                `NEW PUSH RESULT for symbol: ${sym.symbol}: ${pushSingleCandle__RESULT}`
-            );
-        }
+        // for (let sym of symbolList) {
+        //     let assetDBRecord: Asset__DBRecord = sym;
+        //     let pushSingleCandle__RESULT =
+        //         await this.L02__store_SINGLE_CandleInDB(assetDBRecord, FCS);
+        //     console.log(
+        //         `NEW PUSH RESULT for symbol: ${sym.symbol}: ${pushSingleCandle__RESULT}`
+        //     );
+        // }
     }
     /**
      * Checks which prices we have for given date
@@ -165,7 +166,7 @@ class DBbuilder {
      *
      * @param  {FCS_H} FCS
      */
-    async L03__pushAllPricesToDB(FCS: FCS_H) {
+    async L04__pushAllPricesToDB(FCS: FCS_H) {
         if (!this.connection) {
             return false;
         }
@@ -181,18 +182,6 @@ class DBbuilder {
         for (let i in symbolList) {
             let assetDBRecord: Asset__DBRecord = symbolList[i];
 
-            console.log(`Symbol: ${assetDBRecord.assetName}`);
-
-            let storeInDBResult = await this.L02__store_SINGLE_CandleInDB(
-                assetDBRecord,
-                FCS
-            );
-
-            if (!storeInDBResult) {
-                this.errors.push(
-                    `Couldn't store symbol ${assetDBRecord.assetName}`
-                );
-            }
             await this.L01__sleep(5000);
         }
         if (this.errors.length > 0) {
@@ -201,31 +190,54 @@ class DBbuilder {
             );
         }
     }
+    /**
+     * For now we focus on storing the last trading day in db
+     * @param  {FCS_H} FCS
+     * @param  {Asset__DBRecord} assetDBRecord
+     */
+    async L03__store_single_assetInDB(
+        FCS: FCS_H,
+        assetDBRecord: Asset__DBRecord
+    ) {
+        console.log(
+            `Symbol: ${assetDBRecord.assetName} - ${assetDBRecord.symbol}`
+        );
+
+        let assetData: false | AssetSinglePackage = await FCS.getSingleSymbol(
+            assetDBRecord.assetType,
+            assetDBRecord.symbol
+        );
+
+        if (!assetData) {
+            console.warn(`Couldnt' get assetData!`);
+            return false;
+        }
+
+        for (let candle of assetData.candles) {
+            let storeResult: boolean = await this.L02__store_SINGLE_CandleInDB(
+                assetDBRecord,
+                candle as FCSCandle
+            );
+            if (!storeResult) {
+                console.warn(`!StoreResult`);
+            }
+        }
+    }
     async L02__store_SINGLE_CandleInDB(
         assetDBRecord: Asset__DBRecord,
-        FCS: FCS_H
+        candle: FCSCandle
     ): Promise<boolean> {
         try {
-            let assetData: false | FCSCandle = await FCS.getSingleCandleData(
-                assetDBRecord.assetType,
-                assetDBRecord.symbol
-            );
-
-            if (!assetData) {
-                console.warn(`Cannot get assetData`);
-                return false;
-            }
-
             //console.log(`%c${assetData}`, 'color: orange');
 
             let priceRecord: PriceData__DBRecord = {
                 symbol: assetDBRecord.symbol,
-                h: assetData.h,
-                l: assetData.l,
-                o: assetData.o,
-                c: assetData.c,
-                v: assetData.v,
-                tm: formatToSQLDate(assetData.tm),
+                h: candle.h,
+                l: candle.l,
+                o: candle.o,
+                c: candle.c,
+                v: candle.v,
+                tm: formatToSQLDate(candle.tm),
             };
 
             //console.log(`%c${priceRecord}`, 'color: orange');

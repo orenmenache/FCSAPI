@@ -58,9 +58,9 @@ VALUES
 ('USD/ZAR','forex','USDZAR','evening',NULL),
 
 --Forex Noon
-('CNY/USD','forex','CNYUSD','noon',NULL),
+('USD/CNY','forex','CNYUSD','noon',NULL),
 ('USD/KRW','forex','USDKRW','noon',NULL),
-('INR/USD','forex','INRUSD','noon',NULL),
+('USD/INR','forex','INRUSD','noon',NULL),
 
 --CMD
 ('XAU/USD','forex','Gold','noon','evening'),

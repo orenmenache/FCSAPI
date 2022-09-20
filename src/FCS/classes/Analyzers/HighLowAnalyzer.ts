@@ -1,5 +1,5 @@
 import * as math from 'mathjs';
-import { round } from '../functions/round';
+import { round } from '../../functions/round';
 import { PriceAnalyzer } from './PriceAnalyzer';
 
 class HighLowPriceAnalyzer {

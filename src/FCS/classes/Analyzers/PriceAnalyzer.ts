@@ -1,5 +1,5 @@
-import { round } from '../functions/round';
-import { ActionName } from '../types';
+import { round } from '../../functions/round';
+import { ActionName } from '../../types';
 import { Factor } from '../Factor';
 
 class PriceAnalyzer {

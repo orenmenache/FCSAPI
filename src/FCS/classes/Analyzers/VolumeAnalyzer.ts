@@ -1,5 +1,5 @@
 import * as math from 'mathjs';
-import { HighLow } from '../types';
+import { HighLow } from '../../types';
 import { FCSCandle } from '../Candle';
 
 class VolumeAnanyzer {
